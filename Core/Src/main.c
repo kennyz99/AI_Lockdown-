@@ -350,5 +350,118 @@ void UART_Process_Command(char *command)
         }
     }
 }
+/* ===== UART 非阻塞接收 ===== */
+void UART_Receive_Update(void)
+{
+    if (HAL_UART_Receive(&huart2, &rx_data, 1, 1) == HAL_OK)
+    {
+        if (rx_data == '\n' || rx_data == '\r')
+        {
+            if (rx_index > 0)
+            {
+                rx_buffer[rx_index] = '\0';
+
+                UART_Process_Command(rx_buffer);
+
+                rx_index = 0;
+            }
+        }
+        else
+        {
+            if (rx_index < sizeof(rx_buffer) - 1)
+            {
+                rx_buffer[rx_index++] = rx_data;
+            }
+            else
+            {
+                rx_index = 0;
+            }
+        }
+    }
+}
+
+/* ===== 主程式 ===== */
+int main(void)
+{
+    HAL_Init();
+
+    SystemClock_Config();
+
+    MX_GPIO_Init();
+
+    MX_USART2_UART_Init();
+
+    MX_TIM2_Init();
+
+    MX_TIM3_Init();
+
+    if (HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1) != HAL_OK)
+        Error_Handler();
+
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
+        Error_Handler();
+
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2) != HAL_OK)
+        Error_Handler();
+
+    Game_Reset();
+
+    while (1)
+    {
+    	 UART_Receive_Update();
+    	    Button_Check();
+    	    Game_Timer_Update();
+    	    Breath_LED_Update();
+}
+}
+// UART_Receive_Update();
+//Button_Check();
+//Game_Timer_Update();
+//Red_LED_Update();
+
+/* ===== 系統時鐘 ===== */
+void SystemClock_Config(void)
+{
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+    HAL_PWREx_ControlVoltageScaling(
+        PWR_REGULATOR_VOLTAGE_SCALE1);
+
+    RCC_OscInitStruct.OscillatorType =
+        RCC_OSCILLATORTYPE_HSI;
+
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+
+    RCC_OscInitStruct.HSICalibrationValue =
+        RCC_HSICALIBRATION_DEFAULT;
+
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+        Error_Handler();
+
+    RCC_ClkInitStruct.ClockType =
+        RCC_CLOCKTYPE_HCLK |
+        RCC_CLOCKTYPE_SYSCLK |
+        RCC_CLOCKTYPE_PCLK1 |
+        RCC_CLOCKTYPE_PCLK2;
+
+    RCC_ClkInitStruct.SYSCLKSource =
+        RCC_SYSCLKSOURCE_HSI;
+
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+    if (HAL_RCC_ClockConfig(
+        &RCC_ClkInitStruct,
+        FLASH_LATENCY_0) != HAL_OK)
+        Error_Handler();
+}
+
 
 
