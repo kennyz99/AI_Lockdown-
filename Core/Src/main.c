@@ -112,4 +112,103 @@ void LED_Update(void)
         }
     }
 }
+/* ===== 遊戲重置 ===== */
+void Game_Reset(void)
+{
+	game_started = 0;
+	    game_finished = 0;
+
+	    remaining_time = 30;
+	    question_count = 0;
+	    answer_locked = 0;
+
+	    led_state = STATE_YELLOW;
+	    red_led_on = 0;
+
+	    LED_Update();
+}
+
+/* ===== 判斷答案 ===== */
+void Game_Check_Answer(uint8_t answer)
+{
+	if (game_started == 0 ||
+	        game_finished == 1 ||
+	        answer_locked == 1)
+	    {
+	        return;
+	    }
+
+	    answer_locked = 1;
+
+	    if (answer == correct_answer)
+	    {
+	        question_count++;
+
+	        if (question_count >= 3)
+	        {
+	            game_started = 0;
+	            game_finished = 1;
+
+	            led_state = STATE_GREEN;
+	            red_led_on = 0;
+
+	            UART_Send_Text("R,CORRECT\n");
+	            UART_Send_Text("S,WIN\n");
+	        }
+	        else
+	        {
+	            led_state = STATE_GREEN;
+	            UART_Send_Text("R,CORRECT\n");
+	        }
+	    }
+	    else
+	    {
+	        game_started = 0;
+	        game_finished = 1;
+
+	        led_state = STATE_FAILED;
+	        red_led_on = 1;
+
+	        UART_Send_Text("R,WRONG\n");
+	    }
+
+	    LED_Update();
+}
+
+/* ===== 倒數計時 ===== */
+void Game_Timer_Update(void)
+{
+    uint32_t now = HAL_GetTick();
+
+    if (game_started == 0)
+    {
+        return;
+    }
+
+    if (now - last_second_tick >= 1000)
+    {
+        last_second_tick += 1000;
+
+        if (remaining_time > 0)
+        {
+            remaining_time--;
+
+            UART_Send_Time();
+        }
+
+        if (remaining_time == 0)
+        {
+            game_started = 0;
+            game_finished = 1;
+
+            led_state = STATE_FAILED;
+            red_led_on = 1;
+
+            UART_Send_Text("R,TIMEOUT\n");
+
+            LED_Update();
+        }
+    }
+}
+
 
