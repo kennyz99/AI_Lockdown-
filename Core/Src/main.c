@@ -45,6 +45,20 @@ UART_HandleTypeDef hlpuart1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
+#define STATE_GREEN   0
+#define STATE_YELLOW  1
+#define STATE_RED     2
+
+volatile uint8_t button_flag = 0;
+uint8_t led_state = STATE_GREEN;
+
+uint32_t last_button_time = 0;
+
+#define BUTTON_A GPIO_PIN_6
+#define BUTTON_B GPIO_PIN_7
+#define BUTTON_C GPIO_PIN_8
+
+#define LED_GREEN GPIO_PIN_2
 
 /* USER CODE END PV */
 
@@ -59,7 +73,32 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void Set_LED_State(uint8_t state)
+{
+    uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim3);
 
+    if (state == STATE_GREEN)
+    {
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+
+        HAL_GPIO_WritePin(GPIOB, LED_GREEN, GPIO_PIN_SET);
+    }
+    else if (state == STATE_YELLOW)
+    {
+        HAL_GPIO_WritePin(GPIOB, LED_GREEN, GPIO_PIN_RESET);
+
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, arr);
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+    }
+    else if (state == STATE_RED)
+    {
+        HAL_GPIO_WritePin(GPIOB, LED_GREEN, GPIO_PIN_RESET);
+
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, arr);
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -93,6 +132,10 @@ int main(void)
   MX_GPIO_Init();
   MX_LPUART1_UART_Init();
   MX_TIM3_Init();
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+
+  Set_LED_State(STATE_GREEN);
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -101,12 +144,52 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+      /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+      /* USER CODE BEGIN 3 */
+
+      if (button_flag != 0)
+      {
+          uint8_t button = button_flag;
+          button_flag = 0;
+
+          uint32_t now = HAL_GetTick();
+
+          if (now - last_button_time >= 150)
+          {
+              last_button_time = now;
+
+              char message[20];
+
+              if (button == 1)
+              {
+                  led_state = STATE_GREEN;
+                  strcpy(message, "BUTTON_A\r\n");
+              }
+              else if (button == 2)
+              {
+                  led_state = STATE_YELLOW;
+                  strcpy(message, "BUTTON_B\r\n");
+              }
+              else if (button == 3)
+              {
+                  led_state = STATE_RED;
+                  strcpy(message, "BUTTON_C\r\n");
+              }
+
+              Set_LED_State(led_state);
+
+              HAL_UART_Transmit(
+                  &hlpuart1,
+                  (uint8_t *)message,
+                  strlen(message),
+                  100
+              );
+          }
+      }
+
   }
   /* USER CODE END 3 */
-}
 
 /**
   * @brief System Clock Configuration
@@ -310,6 +393,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == BUTTON_A)
+    {
+        button_flag = 1;
+    }
+    else if (GPIO_Pin == BUTTON_B)
+    {
+        button_flag = 2;
+    }
+    else if (GPIO_Pin == BUTTON_C)
+    {
+        button_flag = 3;
+    }
+}
 
 /* USER CODE END 4 */
 
