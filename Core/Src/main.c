@@ -210,5 +210,145 @@ void Game_Timer_Update(void)
         }
     }
 }
+/* ===== 紅燈加速閃爍 ===== */
+void Red_LED_Update(void)
+{
+    if (led_state != STATE_RED &&
+        led_state != STATE_FAILED)
+    {
+        return;
+    }
+
+    uint32_t now = HAL_GetTick();
+
+    uint32_t interval = 500;
+
+    if (remaining_time <= 20)
+        interval = 350;
+
+    if (remaining_time <= 10)
+        interval = 180;
+
+    if (remaining_time <= 5)
+        interval = 80;
+
+    if (now - last_led_tick >= interval)
+    {
+        last_led_tick = now;
+
+        red_led_on = !red_led_on;
+
+        LED_Update();
+    }
+}
+/* ===== 黃燈、紅燈呼吸效果 ===== */
+void Breath_LED_Update(void)
+{
+    uint32_t now = HAL_GetTick();
+
+    if (now - breath_tick >= 5)
+    {
+        breath_tick = now;
+
+        breath_value += breath_direction * 5;
+
+        if (breath_value >= 999)
+        {
+            breath_value = 999;
+            breath_direction = -1;
+        }
+        else if (breath_value <= 0)
+        {
+            breath_value = 0;
+            breath_direction = 1;
+        }
+
+        LED_Update();
+    }
+}
+/* ===== 按鈕偵測 ===== */
+void Button_Check(void)
+{
+    uint32_t now = HAL_GetTick();
+
+    GPIO_PinState pa8 =
+        HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
+
+    GPIO_PinState pa9 =
+        HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9);
+
+    GPIO_PinState pa10 =
+        HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10);
+
+    if (now - last_button_tick >= 250)
+    {
+        if (last_pa8 == GPIO_PIN_SET &&
+            pa8 == GPIO_PIN_RESET)
+        {
+            Game_Check_Answer(1);
+            last_button_tick = now;
+        }
+        else if (last_pa9 == GPIO_PIN_SET &&
+                 pa9 == GPIO_PIN_RESET)
+        {
+            Game_Check_Answer(2);
+            last_button_tick = now;
+        }
+        else if (last_pa10 == GPIO_PIN_SET &&
+                 pa10 == GPIO_PIN_RESET)
+        {
+            Game_Check_Answer(3);
+            last_button_tick = now;
+        }
+    }
+
+    last_pa8 = pa8;
+    last_pa9 = pa9;
+    last_pa10 = pa10;
+}
+
+/* ===== 處理 MSYS2 指令 ===== */
+void UART_Process_Command(char *command)
+{
+    if (command[0] == 'Q' && command[1] == ',')
+    {
+        uint8_t answer = atoi(&command[2]);
+
+        if (answer >= 1 && answer <= 3)
+        {
+            // 新的一場遊戲
+            if (game_finished == 1 || question_count == 0 && game_started == 0)
+            {
+                if (game_finished == 1)
+                {
+                    Game_Reset();
+                }
+
+                if (game_started == 0 && question_count == 0)
+                {
+                    remaining_time = 30;
+                    last_second_tick = HAL_GetTick();
+                    game_started = 1;
+                }
+            }
+
+            // 更新本題答案，不重設倒數
+            correct_answer = answer;
+            answer_locked = 0;
+
+            UART_Send_Time();
+        }
+    }
+
+    else if (command[0] == 'A' && command[1] == ',')
+    {
+        uint8_t answer = atoi(&command[2]);
+
+        if (answer >= 1 && answer <= 3)
+        {
+            Game_Check_Answer(answer);
+        }
+    }
+}
 
 
