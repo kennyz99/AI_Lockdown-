@@ -560,6 +560,83 @@ static void MX_TIM3_Init(void)
     HAL_TIM_MspPostInit(&htim3);
 }
 
+/* ===== USART2 UART ===== */
+static void MX_USART2_UART_Init(void)
+{
+    huart2.Instance = USART2;
+
+    huart2.Init.BaudRate = 115200;
+
+    huart2.Init.WordLength = UART_WORDLENGTH_8B;
+
+    huart2.Init.StopBits = UART_STOPBITS_1;
+
+    huart2.Init.Parity = UART_PARITY_NONE;
+
+    huart2.Init.Mode = UART_MODE_TX_RX;
+
+    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+
+    huart2.Init.OneBitSampling =
+        UART_ONE_BIT_SAMPLE_DISABLE;
+
+    huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+
+    huart2.AdvancedInit.AdvFeatureInit =
+        UART_ADVFEATURE_NO_INIT;
+
+    if (HAL_UART_Init(&huart2) != HAL_OK)
+        Error_Handler();
+
+    if (HAL_UARTEx_SetTxFifoThreshold(
+        &huart2, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+        Error_Handler();
+
+    if (HAL_UARTEx_SetRxFifoThreshold(
+        &huart2, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+        Error_Handler();
+
+    if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK)
+        Error_Handler();
+}
+
+/* ===== GPIO 按鈕 ===== */
+static void MX_GPIO_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin =
+        GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10;
+
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+/* ===== 錯誤處理 ===== */
+void Error_Handler(void)
+{
+    __disable_irq();
+
+    while (1)
+    {
+    }
+}
+
+#ifdef USE_FULL_ASSERT
+
+void assert_failed(uint8_t *file, uint32_t line)
+{
+}
+
+#endif
+
 
 
 
